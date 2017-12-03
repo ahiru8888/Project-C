@@ -1,0 +1,91 @@
+#include <stm32f4xx.h>
+#include "usart.h"	
+#include "delay.h"	
+#include "string.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include "adc1.h"
+#include "defines.h"
+#include "tm_stm32f4_i2c.h"
+#include "tm_stm32f4_ssd1306.h"
+#include "tm_stm32f4_delay.h"
+
+/* I2C address */
+#ifndef SSD1306_I2C_ADDR
+#define SSD1306_I2C_ADDR         0x78
+/* Use defines.h for custom definitions */
+//#define SSD1306_I2C_ADDR       0x7A
+#endif
+/* SSD1306 settings */
+/* SSD1306 width in pixels */
+#ifndef SSD1306_WIDTH
+#define SSD1306_WIDTH            128
+#endif
+/* SSD1306 LCD height in pixels */
+#ifndef SSD1306_HEIGHT
+#define SSD1306_HEIGHT           64
+#endif
+
+void InitGPIOD(void);
+
+int main(void)
+{
+	delay_init(168);
+	/* Initialize system */
+    SystemInit();
+    
+    /* Initialize delay */
+    TM_DELAY_Init();
+    /* Init SSD1306 LCD 128 x 64 px */
+    if (TM_SSD1306_Init()) GPIO_SetBits(GPIOD,GPIO_Pin_12);
+		else GPIO_SetBits(GPIOD,GPIO_Pin_13);
+	
+	/* Go to location X = 30, Y = 4 */
+    TM_SSD1306_GotoXY(0, 4);
+    TM_SSD1306_Puts(" WELCOME MR.DUY", &TM_Font_7x10, SSD1306_COLOR_WHITE);
+		TM_SSD1306_UpdateScreen();
+		Delayms(2000);
+//		TM_SSD1306_Fill(SSD1306_COLOR_WHITE);
+//		writeLine(0,0,0,20,SSD1306_COLOR_WHITE);
+//		TM_SSD1306_DrawRectangle(25,50,80,40,SSD1306_COLOR_WHITE);
+//		TM_SSD1306_DrawTriangle(25,50,45,60,55,80,SSD1306_COLOR_WHITE);
+//		TM_SSD1306_DrawFilledRectangle(0,50,128,16,SSD1306_COLOR_WHITE);
+//		TM_SSD1306_Fill(SSD1306_COLOR_WHITE);
+//		TM_SSD1306_DrawLine(0,0,0,20,SSD1306_COLOR_WHITE);
+//	/* Go to location X = 20, Y = 25 */
+//    TM_SSD1306_GotoXY(8, 25);
+//    TM_SSD1306_Puts("I2C SSD1306 LCD", &TM_Font_7x10, SSD1306_COLOR_WHITE);
+//	
+//	/* Go to location X = 15, Y = 45 */
+//    TM_SSD1306_GotoXY(14, 45);
+//    TM_SSD1306_Puts("Welcome Duy to EIU", &TM_Font_7x10, SSD1306_COLOR_WHITE);
+		
+		/* Update screen, send changes to LCD */
+//    TM_SSD1306_UpdateScreen();
+  while(1)
+	{
+		/* Invert pixels */
+        TM_SSD1306_ToggleInvert();
+        
+        /* Update screen */
+        TM_SSD1306_UpdateScreen();
+        
+        /* Make a little delay */
+        Delayms(500);
+	}		
+}
+
+
+void InitGPIOD(void)		
+{
+	GPIO_InitTypeDef GPIO_InitStruct; 
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE); 
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_15|GPIO_Pin_14|GPIO_Pin_13|GPIO_Pin_12|GPIO_Pin_8 ; 
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;	
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz; 	
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP; 	
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL; 
+	GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+	GPIO_SetBits(GPIOD,GPIO_Pin_8);
+}

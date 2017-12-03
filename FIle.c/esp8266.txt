@@ -1,0 +1,37 @@
+https://api.thingspeak.com/update?key=X7XV2EFC3WQIBGHZ&field1=13&field2=12.34
+https://thingspeak.com/channels/103193/fields/1/last   >>>doc gia tri sau cung
+GET 184.106.153.149/update?key=3PJOWCT7LH2574HI&field1=20.43
+
+AT+CWMODE=1<CR><LF>
+AT+CWJAP="STM32VN","khongbietpass"<CR><LF>
+AT+CWJAP="Duong","stm32vntk"<CR><LF>
+AT+CWJAP="IC","01658330305"<CR><LF>
+AT+CIPMUX=1<CR><LF>
+
+http://xively.com/?key=xxxxxxxxxxxx&datastream=temperature&value=20.0
+
+AT+CIPSTART=4,"TCP","184.106.153.149",80<CR><LF>
+AT+CIPSEND=4,46<CR><LF>
+GET /update?key=3PJOWCT7LH2574HI&field1=7.56<CR><LF>
+
+AT+CIPSTART="TCP","184.106.153.149","80"<CR><LF>
+AT+CIPSEND=59<CR><LF>
+GET /update?key=3PJOWCT7LH2574HI&field1=7.56&field2=20.43<CR><LF>
+
+>>POST_VAL(WEB): http://api.thingspeak.com/update?key=3PJOWCT7LH2574HI&field1=20.43
+>>READ_VAL(MCU): 
+AT+CIPSTART=4,"TCP","184.106.153.149",80
+AT+CIPSEND=4,35
+GET /channels/19501/fields/1/last
+
+
+>>TEST>>OK:
+AT+CIPSEND=4,36<CR><LF>
+GET /channels/103193/fields/1/last <CR><LF>
+
+AT+CIPSEND=4,63+28<CR><LF>
+AT+CIPSEND=4,91<CR><LF>
+GET /channels/19501/fields/1/last HTTP/1.1<CR><LF>Host: api.thingspeak.com<CR><LF>Connection: close<CR><LF><CR><LF>
+
+
+https://docs.google.com/spreadsheets/d/1Ty9C0d81hafgFy1ojhOX5IiYvhx4sUNJp2Z1sF9spYA/gviz/tq?range=A1:B1

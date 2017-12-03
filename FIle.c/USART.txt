@@ -1,0 +1,49 @@
+int main(void)
+{
+	u8 t=0, y=100,i=0;
+	char cmd[] = "Xin chao";
+	char buffer[100];
+	char nhietdo[10];
+	char doam[10];
+	char anhsang[10];
+	float nhiet_do,do_am, anh_sang;
+	char *p;
+	char string1[100]= "hello from, vietnam\n";
+	char string2[100]= "communicate usart";
+	USARTx_Init(USART1, Pins_PB6PB7, 115200);	//115200
+	delay_init(168);
+	
+  while(1){
+//    printf("t:%3d\r\n",t);
+//		printf("%3d %3d\r\n",y,t);
+//		printf("%s\r\n",cmd);
+//		sprintf(buffer,"%3d %3d\r\n",y,t); // chuyen tu so sang chuoi
+//		USART_Puts(USART1,buffer);
+//		USART_Putc(USART1,'D');
+//		delay_ms(1000);
+//		get_cmd[0] = USART_Getc(USART1);
+//		printf("%s\r\n",get_cmd);
+//		delay_ms(1000);
+/*-----Nhan du lieu tu may tinh va cat chuoi----*/		
+		if(USART_Gets(USART1,buffer,sizeof(buffer)))
+		{
+			strcpy(nhietdo,strtok(buffer, ",")); // copy du lieu tu buffer dua vao chuoi nhietdo
+			strcpy(doam,strtok(NULL, ","));	// cat du lieu tu null toi dau ,
+			strcpy(anhsang,strtok(NULL, "\n")); // cat du lieu tu null toi \n
+			nhiet_do = atof(nhietdo); // atof la chuyen tu chuoi sang float
+			do_am = atof(doam);	// atoi la chuyen tu chuoi sang integer
+			anh_sang = atof(anhsang);
+			printf("%2.1f,%2.2f,%2.3f",nhiet_do,do_am,anh_sang);
+			for(int a=0; a<100; a++)
+			{
+				buffer[a] = 0;
+			}
+	//	}
+	//		delay_ms(500);
+	//		i++;
+	//		t++;
+	//		y++;
+
+		}
+	}
+}

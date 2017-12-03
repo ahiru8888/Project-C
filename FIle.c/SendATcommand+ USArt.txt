@@ -1,0 +1,65 @@
+#include <stm32f4xx.h>
+#include "usart.h"	
+#include "delay.h"	
+#include "string.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include "adc1.h"
+#include "defines.h"
+#include "tm_stm32f4_i2c.h"
+
+extern int count;
+int sys_time =0;	
+uint8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeout)
+{
+	uint8_t x=0,  answer=0;
+  char response[100];
+	
+	memset(response, '\0', 100);    // Initialize the string
+	delay_ms(100);	
+	while(!(USART_BufferEmpty(USART2))) {USART_ClearBuffer(USART2);} // Clean the input buffer
+	USART_Puts(USART2,ATcommand);
+	count=1; // Run systick timer
+	do
+	{
+		if( USART_GetITStatus(USART2, USART_IT_RXNE) )
+		{
+			while (USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == RESET); // Nsure
+			response[x] = USART_Getc(USART2);
+			x++;
+			// check if the desired answer is in the response of the module
+      if (strstr(response, expected_answer) != NULL)    
+      {
+        answer = 1;
+				USART_ClearITPendingBit(USART2, USART_IT_RXNE); // Nsure
+      }			
+		}
+		// Waits for the answer with time out
+	}
+	while((answer == 0) && (sys_time < timeout));
+	sys_time=0;
+	count=0;
+	return answer;
+}
+
+
+int main(void)
+{
+	SystemInit();
+		
+	USARTx_Init(USART2, Pins_PD5PD6, 115200);
+	delay_init(168);	
+	
+	if(SysTick_Config(SystemCoreClock / 1000))
+	{
+	//Capture error
+		while(1);
+	}
+
+  while(1)
+	{
+		
+	}
+		
+}
+

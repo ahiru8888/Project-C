@@ -1,0 +1,84 @@
+#include "sys.h"
+#include "delay.h"
+#include "usart.h"
+//#include "led.h"
+//#include "key.h"
+#include "tm_stm32f4_i2c.h"
+#include "lcd_i2c.h" 
+#include "duy.h"
+
+//Slave address
+//#define ADDRESS		0xD0 // 1101 000 0
+const u8 TEXT_Buffer[]={"STM32F4 I2C TEST"};
+#define SIZE sizeof(TEXT_Buffer)	 
+
+void InitGPIO(void)		
+{
+	GPIO_InitTypeDef GPIO_InitStruct; 
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE); 
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_15|GPIO_Pin_14|GPIO_Pin_13|GPIO_Pin_12 ; 
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz; 
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP; 
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL; 
+	GPIO_Init(GPIOD, &GPIO_InitStruct);  
+}
+
+int main(void)
+{ 
+	u8 i;
+	char buf[10];
+	InitGPIO();
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+	delay_init(168);	
+	 
+	
+	
+	/* Initialize LCD */
+	if (LCD_Init() != LCD_Result_Ok) {
+		/* Red LED on */
+		GPIO_SetBits(GPIOD,GPIO_Pin_12);
+		while (1);
+	}
+	else GPIO_SetBits(GPIOD,GPIO_Pin_13);
+	LCDI2C_init(0x7E,16,2);
+	 LCDI2C_backlight(); // finish with backlight on
+
+  LCDI2C_clear();
+
+   LCDI2C_setCursor(2,0);
+   LCDI2C_write_String("Hello !");
+	delay_ms(2000);
+	
+	while (1) {
+		i+=1;
+//		/* Toggle GREEN led if needed */
+//		if (i%10000==0) {			
+//			/* Toggle GREEN LED */
+//			GPIO_SetBits(GPIOD,GPIO_Pin_15);
+//		}
+//		LCDI2C_setCursor(2,0);
+//		LCDI2C_write_String("                ");
+//		delay_ms(2000);
+//		LCDI2C_setCursor(2,0);
+//		LCDI2C_write_String("Welcome to EIU");
+//		sprintf(buf,"%d",i);
+//		LCDI2C_setCursor(0,1);
+//		LCDI2C_write_String(buf);
+//		delay_ms(2000);
+//		if(i==3)
+//		{
+//			LCDI2C_setCursor(2,0);
+//			LCDI2C_write_String("Hello Michael---");
+//			delay_ms(1000);
+//			i=0;
+//		}
+		LCDI2C_setCursor(0,0);
+		LCDI2C_write_String("Welcome to EIU");
+		delay_ms(200);
+		LCDI2C_setCursor(0,0);
+		LCDI2C_write_String("                ");
+		delay_ms(200);
+	} 	    
+}

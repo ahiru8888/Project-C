@@ -1,0 +1,44 @@
+int main(void)
+{
+//	u8 y=100,i=0;
+//	char cmd[] = "Xin chao";
+//	char buffer[100];
+//	uint32_t pwm;
+//	char nhietdo[10];
+//	char doam[10];
+//	char anhsang[10];
+//	float nhiet_do,do_am, anh_sang;
+//	char string1[100]= "hello from, vietnam\n";
+//	char string2[100]= "communicate usart";
+//	USARTx_Init(USART1, Pins_PB6PB7, 115200);	//115200
+//	delay_init(168);
+	Adc_Init();
+	TIM_PWM_Configuration();
+	//init_GPIOD();
+	TIM4->CCR1 = 10 * 20000 / 100;  // 10% Duty cycle
+	TIM4->CCR2 = 50 * 20000 / 100;  // 50% Duty cycle 
+	TIM4->CCR3 = 75 * 20000 / 100;  // 75% Duty cycle
+	TIM4->CCR4 = 100 * 20000 / 100;  // 100% Duty cycle
+	
+  while(1)
+	{
+
+
+//		delay_ms(50);
+//		if(USART_Gets(USART1,buffer,sizeof(buffer)))
+//		{
+//			i+=1;
+//			pwm = atoi(buffer);
+//			printf("%d\r\n",pwm);
+//			if(i==1) TIM4->CCR1 = pwm * 20000 / 100;  // 10% Duty cycle
+//			if(i==2) TIM4->CCR2 = pwm * 20000 / 100;
+//			if(i==3) TIM4->CCR3 = pwm * 20000 / 100;
+//			if(i==4) TIM4->CCR4 = pwm * 20000 / 100;
+//			if(i==4) i=0;
+//			for(int a=0; a<100; a++)
+//			{
+//				buffer[a] = 0;
+//			}
+//		}
+	}
+}

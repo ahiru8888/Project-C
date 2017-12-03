@@ -1,0 +1,131 @@
+#include <stm32f4xx.h>
+#include "usart.h"	
+#include "delay.h"	
+#include "string.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include "adc1.h"
+#include "defines.h"
+#include "tm_stm32f4_i2c.h"
+
+extern int count;
+int sys_time =0;
+uint8_t result=0;
+uint8_t sms=0;
+char buffer[30];
+void InitGPIO(void);
+uint8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeout)
+{
+	uint8_t x=0,  answer=0;
+	uint8_t c;
+  char response[100];
+	
+	memset(response, '\0', 100);    // Initialize the string
+	delay_ms(100);	
+	//while(!(USART_BufferEmpty(USART2))) {USART_ClearBuffer(USART2);} // Clean the input buffer
+	while( USART_Getc(USART2) > 0) ; 
+	USART_Puts(USART2,ATcommand);
+//	count=1; // Run systick timer
+	x=0;
+	do
+	{
+		delay_ms(1);
+		c= USART_Getc(USART2);
+		USART_Putc(USART1,c);
+		if( c != 0 )
+		{
+			
+			//while (USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == RESET); // Nsure
+			response[x] = c;
+			x++;
+			// check if the desired answer is in the response of the module
+      if (strstr(response, expected_answer) != NULL)    
+      {
+        answer = 1;				
+      }	
+			//USART_ClearITPendingBit(USART2, USART_IT_RXNE); // Nsure			
+		}
+		// Waits for the answer with time out
+	}
+	while((answer == 0) && (--timeout>0));
+	
+	//sys_time=0;
+	//count=0;
+	return answer;
+}
+
+void power_on(void)
+{
+	result = sendATcommand("AT","OK",2000);
+	if(result==0)
+	{
+		delay_ms(2000);
+		while(result==0) {sendATcommand("AT","OK",2000);}
+	}
+}
+
+void send_sms(char* sms_text)
+{
+	char phone_number[] = "0984095710";
+//	char sms_hex[10];
+	sendATcommand("AT+CMGF=1\r\n", "OK", 1000);
+	sprintf(buffer,"AT+CMGS=\"%s\"\r\n", phone_number);
+	sms = sendATcommand(buffer, ">", 2000);    // send the SMS number
+	if (sms == 1)
+	{
+		//USART_Puts(USART2,sms_text);
+		printf("%s\x1A",sms_text);
+		//USART_Puts(USART2,sms_hex);
+//	USART_Puts(USART2,"\x1A");
+//	sms = sendATcommand("", "OK", 20000);
+	  GPIO_SetBits(GPIOD,GPIO_Pin_15);
+	}
+}
+int main(void)
+{
+	SystemInit();
+		
+	USARTx_Init(USART2, Pins_PD5PD6, 115200);
+	//delay_ms(1000);
+	
+	delay_init(168);
+  USARTx_Init(USART1, Pins_PB6PB7, 115200);	
+	InitGPIO();
+	
+	delay_ms(5000); 
+	power_on();
+//	result = sendATcommand("AT\r\n","OK",2000);
+//	delay_ms(2000);
+	GPIO_SetBits(GPIOD,GPIO_Pin_14);
+//	USART_Puts(USART1,"Hello");
+//	delay_ms(2000);
+//	send_sms("Hello World");
+  while(1)
+	{
+		if(result==0) GPIO_SetBits(GPIOD,GPIO_Pin_12);
+		else GPIO_SetBits(GPIOD,GPIO_Pin_13);
+	}
+		
+}
+
+void InitGPIO(void)		
+{
+//declare GPIO_InitTypeDef struct
+GPIO_InitTypeDef GPIO_InitStruct; 
+//enable clock for AHB1 bus, GPIOD peripheral
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE); 
+
+
+//declareGPIO pin 15
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_15|GPIO_Pin_14|GPIO_Pin_13|GPIO_Pin_12|GPIO_Pin_8 ; 
+//usingGPIO D pin 15 as OUTPUT mode
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+	//set GPIO speed at 50Mhz 
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz; 
+	//set GPIO output as Push Pull mode
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP; 
+	//don’t use pull down register
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL; 
+	//save the configuration
+	GPIO_Init(GPIOD, &GPIO_InitStruct); 	
+}

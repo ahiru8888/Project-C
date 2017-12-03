@@ -1,0 +1,220 @@
+#include <stm32f4xx.h>
+#include "usart.h"	//PB6-PB7UART1
+#include "delay.h"	//delay_usdelay_ms
+#include "string.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include "adc1.h"
+#include "defines.h"
+#include "tm_stm32f4_i2c.h"
+#include "I2C_LCD.h"
+#include "dht11.h"
+#include "stm32f4xx_exti.h"
+#include "stm32f4xx_syscfg.h"
+#include "misc.h"
+
+#define ADDRESS  0xD0  //1101 000 0
+#define BH1750 0x46
+#define H_resolution 0x10 //Continuously H-resolution mode
+
+uint8_t T_byte1, T_byte2, RH_byte1, RH_byte2, CheckSum ;
+char do_am[40] = "Do am:";
+char nhiet_do[50] = "Nhiet do:";
+unsigned char state = 0;
+char buffer[50],buf[50];
+uint8_t data[7] = {00, 10, 12, 2, 4, 9, 17};
+uint8_t sec, min,hour,day,date,month,year;
+uint8_t rtc_sec10,rtc_sec,rtc_min10, rtc_min,rtc_hour10,rtc_hour,rtc_month10,rtc_month;
+unsigned char dht11[5];
+uint8_t oldTemp, oldHud;
+int count=0,mode;
+
+
+/**------------ I2C _ RTC + LCD ----------------------*
+--------------------------------------------------------*/
+void InitGPIO(void)		
+{
+	GPIO_InitTypeDef GPIO_InitStruct; 
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE); 
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_15|GPIO_Pin_14|GPIO_Pin_13|GPIO_Pin_12 ; 
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz; 
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP; 
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL; 
+	GPIO_Init(GPIOD, &GPIO_InitStruct);  
+}
+
+uint8_t BCD2DEC(uint8_t dat)
+{
+	uint8_t low;
+	uint8_t high;
+	low = dat & 0x0F;
+	high = (dat >> 4)*10;//led 7 doan 8bit(moi lan dich phai 4 bit)
+	return high+low;
+}
+uint8_t DEC2BCD(uint8_t dat)
+{
+	uint8_t low;
+	uint8_t high;
+	low = dat%10;
+	high =(dat/10)<<4;	//
+	return high+low;
+}
+void Chuyendata(uint8_t *dat,uint8_t times)
+{
+	u8 i;
+	for(i=0;i<times;i++)
+	{
+		dat[i]= DEC2BCD(dat[i]);
+	}
+}
+
+void get_Dht11(void)
+{
+	state = get_data();
+		dht11[0] = Humd_int();
+		dht11[1] = Humd_float();
+		dht11[2] = Temp_int();
+		dht11[3] = Temp_float();
+		if((dht11[0] != oldHud) || (dht11[2] != oldTemp))
+		{
+				
+				sprintf(buffer,"H:%d.%d",dht11[0],dht11[1]);
+				LCDI2C_setCursor(9,0);
+				LCDI2C_write_String(buffer);
+				sprintf(buffer,"T:%d.%d",dht11[2],dht11[3]);
+				LCDI2C_setCursor(9,1);
+				LCDI2C_write_String(buffer);
+				oldHud = dht11[0];
+				oldTemp = dht11[2];
+		}
+}
+
+void get_RTC(void)
+{
+	sec =BCD2DEC(TM_I2C_Read(I2C3, ADDRESS, 0x00));	
+	min =BCD2DEC(TM_I2C_Read(I2C3, ADDRESS, 0x01));
+	hour = BCD2DEC(TM_I2C_Read(I2C3, ADDRESS, 0x02));		
+	day = BCD2DEC(TM_I2C_Read(I2C3, ADDRESS, 0x03));		
+	date = BCD2DEC(TM_I2C_Read(I2C3, ADDRESS, 0x04));	
+	month = BCD2DEC(TM_I2C_Read(I2C3, ADDRESS, 0x05));		
+	year = BCD2DEC(TM_I2C_Read(I2C3, ADDRESS, 0x06));
+	LCDI2C_setCursor(0,0);
+	sprintf(buf,"%2d:%2d:%2d",hour,min,sec);
+	LCDI2C_write_String(buf);
+	LCDI2C_setCursor(0,1);
+	switch(day)
+		{
+			case 1 : LCDI2C_write_String("S-"); break;
+			case 2 : LCDI2C_write_String("M-"); break;
+			case 3 : LCDI2C_write_String("T-"); break;
+			case 4 : LCDI2C_write_String("W-"); break;
+			case 5 : LCDI2C_write_String("Th-"); break;
+			case 6 : LCDI2C_write_String("F-"); break;
+			case 7 : LCDI2C_write_String("S-"); break;
+		}
+	LCDI2C_setCursor(2,1);
+	sprintf(buf,"%d/%d/%d",date,month,year);
+	LCDI2C_write_String(buf);
+}
+
+/// **** External Interrupt  *** ////
+void Configure_EXT_Line0(void) 
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	EXTI_InitTypeDef EXTI_InitStruct;
+	NVIC_InitTypeDef NVIC_InitStruct;	
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+	/* Enable clock for SYSCFG */
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);	
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_0;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);	
+	
+	/* Tell system that you will use PC0 for EXTI_Line0 */
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource0);
+	/* PD0 is connected to EXTI_Line0 */
+	EXTI_InitStruct.EXTI_Line = EXTI_Line0;
+	/* Enable interrupt */
+	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+	/* Interrupt mode */
+	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+	/* Triggers on rising and falling edge */
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling; //
+	/* Add to EXTI */
+	EXTI_Init(&EXTI_InitStruct);
+	/* Add IRQ vector to NVIC */
+	/* PD0 is connected to EXTI_Line0, which has EXTI0_IRQn vector */
+	NVIC_InitStruct.NVIC_IRQChannel = EXTI0_IRQn;
+	/* Set priority */
+	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0x00;
+	/* Set sub priority */
+	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0x00;
+	/* Enable interrupt */
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	/* Add to NVIC */
+	NVIC_Init(&NVIC_InitStruct);
+}
+
+void EXTI0_IRQHandler(void) {
+    /* Make sure that interrupt flag is set */
+    if (EXTI_GetITStatus(EXTI_Line0) != RESET) {
+			if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0)==1)
+			{
+				while(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_0)==1)
+				delay_ms(70);
+        mode+=1;	
+			}
+        if(mode==2) mode =0;
+        /* Clear interrupt flag */
+        EXTI_ClearITPendingBit(EXTI_Line0);
+    }
+}
+
+void input_GPIOC(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE); 
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 ; 
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;  
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; 
+	GPIO_Init(GPIOC, &GPIO_InitStructure); 	
+}
+//------------------------------------////
+int main(void)
+{
+	InitGPIO();
+	input_GPIOC();
+	Configure_EXT_Line0();
+	delay_init(168);
+  while(1)
+	{
+		if(GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_5)==0)
+		{
+				while(GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_5)==0)
+				delay_ms(70);
+        count+=1;	
+		}
+		if(count==2) count=0;
+		
+		if(count==0)
+		{GPIO_SetBits(GPIOD,GPIO_Pin_12);}	
+		if(count==1)
+		{GPIO_ResetBits(GPIOD,GPIO_Pin_12);}	
+//	delay_ms(100);	
+			if(mode==0)
+		{GPIO_SetBits(GPIOD,GPIO_Pin_13);}	
+		if(mode==1)
+		{GPIO_ResetBits(GPIOD,GPIO_Pin_13);}
+//delay_ms(100);		
+	}
+		
+}
+
